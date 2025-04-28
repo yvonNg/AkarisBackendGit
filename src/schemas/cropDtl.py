@@ -24,7 +24,7 @@ class CropBase(BaseModel):
 
 # For Create API (only input fields)
 class CreateCrop(CropBase):
-    pass
+    other_method: Optional[str] = None
 
 # For Update API (partial update)
 class UpdateCrop(BaseModel):

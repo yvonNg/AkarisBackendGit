@@ -205,7 +205,7 @@ class CropActivity(Base):
     farm_id = Column(Integer,ForeignKey("farms.farm_id"), nullable=False, index=True)
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=True, index=True)
     nfc_code = Column(String(30), nullable=True, index=True)
-    activity_name = Column(SqlEnum(CropActivityEnum), nullable=False)
+    activity_name = Column(String(50), nullable=False)
     other_activity = Column(String(50), nullable=True)
     activity_details = Column(Text, nullable=True)
     record_created_date = Column(DateTime, default=func.now(), nullable=False)
@@ -223,18 +223,17 @@ class CropActivity(Base):
         return f"<CropActivity(id={self.activity_id}, activity={self.activity_name})>"
 
 #-------------Crop Planting Method Model---------------
-
-class MethodStatusEnum(enum.Enum):
-    active = "active"
-    inactive = "inactive"
-    deleted = "deleted"
-
 class PlantMethodEnum(enum.Enum):
     transplant = "transplant"
     direct_sowing = "direct sowing"
     cutting = "cutting"
     grafting = "grafting"
     other = "other"
+
+class MethodStatusEnum(enum.Enum):
+    active = "active"
+    inactive = "inactive"
+    deleted = "deleted"
 
 class PlantMethod(Base):
     __tablename__ = "plant_method"

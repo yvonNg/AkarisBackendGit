@@ -61,3 +61,19 @@ class LoginOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+# --------- Token Response Schemas ---------
+
+class UserPreview(BaseModel):
+    user_id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    last_login_date: datetime
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class LoginResponse(Token):
+    user: UserPreview
