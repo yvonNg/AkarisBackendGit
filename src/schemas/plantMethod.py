@@ -7,17 +7,17 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from enum import Enum
-from src.models.model import MethodStatusEnum, PlantMethodEnum
+from src.models.model import MethodStatusEnum
 
 #---------Planting Method Schemas-----------
 
 class CreatePlantMethod(BaseModel): 
-    method: PlantMethodEnum
+    method: str
     other_method: Optional[str] = None
     record_created_by: int
 
 class UpdatePlantMethod(BaseModel):
-    method: Optional[PlantMethodEnum] = None
+    method: Optional[str] = None
     other_method: Optional[str] = None
 
 class OutPlantMethod(CreatePlantMethod):
