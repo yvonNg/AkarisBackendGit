@@ -10,8 +10,8 @@ Follow the steps below:
 
 1. Activate your virtual environment (in Terminal):
    
-   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-   .\venv\Scripts\Activate.ps1
+   - Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   - .\venv\Scripts\Activate.ps1
 
 2. Install required packages:
 
