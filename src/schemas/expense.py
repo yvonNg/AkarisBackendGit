@@ -4,7 +4,7 @@
 # this file holding format for expenses
 
 from pydantic import BaseModel, condecimal
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Annotated
 from enum import Enum
 from src.models.model import RecordStatusEnum
@@ -18,13 +18,13 @@ class CreateExpenses(BaseModel):
     category: str
     description: Optional[str] = None
     amount: dp4
-    transaction_date: datetime
+    transaction_date: date
 
 class UpdateExpenses(BaseModel):
     category: Optional[str] = None
     description: Optional[str] = None
     amount: Optional[dp4] = None
-    transaction_date: Optional[datetime] = None
+    transaction_date: Optional[date] = None
 
 #get farm_id by relation in crop_id
 class OutExpenses(CreateExpenses):

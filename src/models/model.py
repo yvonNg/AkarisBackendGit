@@ -267,7 +267,7 @@ class Expense(Base):
     category = Column(String(50), nullable=False) 
     description = Column(Text, nullable=True)
     amount = Column(Numeric(10,4), nullable=False) 
-    transaction_date = Column(DateTime, nullable=False)
+    transaction_date = Column(Date, nullable=False)
     record_status = Column(SqlEnum(RecordStatusEnum), default=RecordStatusEnum.active, nullable=False)
     record_created_date = Column(DateTime, default=func.now(), nullable=False)
     record_updated_date = Column(DateTime, default=None, onupdate=func.now(), nullable=True)
