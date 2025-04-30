@@ -19,7 +19,6 @@ class FarmStatus(str, Enum):
 #Input from frontend
 
 class FarmCreate(BaseModel):
-    user_id: int
     farm_abbrev: str
     crop_type: str
     farm_size: DecimalPlace2
@@ -33,6 +32,7 @@ class FarmCreateNUpdate(BaseModel):
 
 class FarmOut(FarmCreate):
     farm_id: int
+    user_id: int
     farm_status: FarmStatus
     farm_is_active: bool
     record_created_date: datetime

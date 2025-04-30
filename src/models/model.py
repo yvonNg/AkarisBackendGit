@@ -23,12 +23,12 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
-    email = Column(String(50), unique=True, index=True)
+    email = Column(String(50), unique=True, index=True, nullable=False)
     password = Column(String, nullable=False) #stores hashed ps
     phone_number = Column(String(15), nullable=False)
-    registered_date = Column(DateTime, default=func.now())
+    registered_date = Column(DateTime, default=func.now(), nullable=False)
     last_login_date = Column(DateTime)
-    user_status = Column(SqlEnum(UserStatus), default=UserStatus.active)
+    user_status = Column(SqlEnum(UserStatus), default=UserStatus.active, nullable=False)
     user_is_active = Column(Boolean, default=True, nullable=False)
 
     # relationship between tables
@@ -47,7 +47,7 @@ class Login(Base):
 
     login_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
-    login_timestamp = Column(DateTime, default=func.now())
+    login_timestamp = Column(DateTime(timezone=True), server_default=func.now())
     ip_address = Column(String(45), nullable=False)
     
     # relationship between tables
@@ -95,7 +95,6 @@ class Farm(Base):
 class FarmExpectationEnum(enum.Enum):
     active = "active"
     deleted = "deleted"
-    updated = "updated"
 
 class FarmExpect(Base):
     __tablename__ = "farm_expect"

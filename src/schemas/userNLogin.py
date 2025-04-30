@@ -1,21 +1,16 @@
-# Author: Ng Yee Von
-# Created date: 22/04/2025
-# Schemas file (to define how data should look when it comes in (from frontend) and goes out (to frontend))
-# this file holding format for user and login details
-
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from datetime import datetime
 from typing import Optional
-from enum import Enum 
+from enum import Enum
+import re
 
-#---------User Schemas----------
-
+# User Status Enum
 class UserStatus(str, Enum):
-    active ="active"
+    active = "active"
     inactive = "inactive"
     terminated = "deleted"
 
-# Shared fields
+# Shared fields for user data
 class UserBase(BaseModel):
     first_name: str
     last_name: str
@@ -26,6 +21,26 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str  # Plain password from user input
 
+    @validator("password")
+    def validate_password(cls, value):
+        # Check password length
+        if not 8 <= len(value) <= 16:
+            raise ValueError("Password must be between 8 and 16 characters")
+        # Check if there is at least one uppercase letter
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Password must contain at least one uppercase letter")
+        # Check if there is at least one lowercase letter
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Password must contain at least one lowercase letter")
+        # Check if there is at least one digit
+        if not re.search(r"\d", value):
+            raise ValueError("Password must contain at least one digit")
+        # Check if there is at least one special character
+        if not re.search(r"[^\w\s]", value):
+            raise ValueError("Password must contain at least one special character")
+        return value
+
+# For user update (optional fields)
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -38,21 +53,18 @@ class UserOut(UserBase):
     user_id: int
     registered_date: datetime
     last_login_date: Optional[datetime] = None
-    user_status:UserStatus
+    user_status: UserStatus
     user_is_active: bool
 
     class Config:
         orm_mode = True
 
 #-----------User Login Schemas-------------
-
-# Input from frontend
 class LoginCreate(BaseModel):
     email: EmailStr
     password: str
     ip_address: Optional[str] = None
 
-# Output only (when returning login info)
 class LoginOut(BaseModel):
     login_id: int
     user_id: int
@@ -63,13 +75,12 @@ class LoginOut(BaseModel):
         orm_mode = True
 
 # --------- Token Response Schemas ---------
-
 class UserPreview(BaseModel):
     user_id: int
     first_name: str
     last_name: str
     email: EmailStr
-    last_login_date: datetime
+    login_timestamp: Optional[datetime] = None
 
 class Token(BaseModel):
     access_token: str

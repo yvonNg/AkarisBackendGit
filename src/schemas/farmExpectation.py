@@ -19,7 +19,6 @@ class FarmExpectCreate(BaseModel):
     expected_harvest_base_uom: DecimalPlace2
     expected_income: DecimalPlace2
 
-
 class FarmExpectUpdate(BaseModel):
     expected_harvest_date: Optional[date] = None
     expected_harvest_base_uom: Optional[DecimalPlace2] = None

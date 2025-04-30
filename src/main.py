@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.routes import user, login, FarmCRUD, ExpectationCRUD, cropCRUD, dailyCrop # here to include the path
+from src.routes import user, login, FarmCRUD, ExpectationCRUD, cropCRUD, dailyCrop, getPlantMethod, harvest, expensesCRUD # here to include the path
 from typing import Union
 
 app = FastAPI()
@@ -11,6 +11,9 @@ app.include_router(FarmCRUD.router)
 app.include_router(ExpectationCRUD.router)
 app.include_router(cropCRUD.router)
 app.include_router(dailyCrop.router)
+app.include_router(getPlantMethod.router)
+app.include_router(harvest.router)
+app.include_router(expensesCRUD.router)
 
 @app.get("/")
 def read_root():

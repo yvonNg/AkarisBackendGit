@@ -2,53 +2,30 @@
 # Created date: 26/04/2025
 # CRUD routes for farm operations (uses JWT for user identity)
 
-from fastapi import APIRouter, Depends, HTTPException, Security
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, timezone
-from jose import jwt, JWTError
 from src.models import model
-from src.models.model import FarmStatusEnum, FarmExpectationEnum
+from src.models.model import FarmStatusEnum, FarmExpectationEnum, User
 from src.schemas import farm
 from src.database import get_db
-from dotenv import load_dotenv
-import os
-
-# Load environment variables
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+from src.dependencies import get_current_user
 
 router = APIRouter(prefix="/farms", tags=["Farms"])
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login/")
-
-# Helper function to extract user_id from JWT token
-def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
-    credentials_exception = HTTPException(
-        status_code=401,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        return int(user_id)
-    except JWTError:
-        raise credentials_exception
 
 # CREATE new farm
 @router.post("/create", response_model=farm.FarmOut)
 async def create_farm(
     farm_data: farm.FarmCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id)
+    current_user: User = Depends(get_current_user)
 ):
+    # current_user is the object returned by get_current_user
+    print(f"Creating farm for user: {current_user.user_id}")
+
     new_farm = model.Farm(
-        user_id=user_id,
+        user_id=current_user.user_id,
         farm_abbrev=farm_data.farm_abbrev,
         crop_type=farm_data.crop_type,
         farm_size=farm_data.farm_size,
@@ -72,18 +49,38 @@ async def get_farm(farm_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Farm not found")
     return farm_obj
 
+# READ (all farm belong to a user in list)
+@router.get("/my-farms", response_model=list[farm.FarmOut])
+async def get_user_farms(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(model.Farm).where(
+            model.Farm.user_id == current_user.user_id,
+            model.Farm.farm_is_active == True
+        )
+    )
+    farms = result.scalars().all()
+    return farms
+
 # UPDATE
 @router.put("/update/{farm_id}", response_model=farm.FarmOut)
 async def update_farm(
     farm_id: int,
     farm_update: farm.FarmCreateNUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         result = await db.execute(select(model.Farm).where(model.Farm.farm_id == farm_id))
         farm_obj = result.scalar_one_or_none()
         if not farm_obj:
             raise HTTPException(status_code=404, detail="Farm not found")
+        
+        # Check farm ownership
+        if farm_obj.user_id != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized to update this farm")
 
         is_farm_abbrev_updated = False
 
@@ -113,11 +110,16 @@ async def update_farm(
 
 # DELETE (soft delete)
 @router.delete("/delete/{farm_id}")
-async def soft_delete_farm(farm_id: int, db: AsyncSession = Depends(get_db)):
+async def soft_delete_farm(farm_id: int, db: AsyncSession = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
     result = await db.execute(select(model.Farm).where(model.Farm.farm_id == farm_id))
     farm_obj = result.scalar_one_or_none()
     if not farm_obj:
         raise HTTPException(status_code=404, detail="Farm not found")
+
+    #Check Ownership
+    if farm_obj.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized to delete this farm")
 
     farm_obj.farm_is_active = False
     farm_obj.farm_status = FarmStatusEnum.terminated

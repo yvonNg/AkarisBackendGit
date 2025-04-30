@@ -12,6 +12,21 @@ from sqlalchemy.future import select
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+import re
+
+def validate_password(password: str) -> bool:
+    if not 8 <= len(password) <= 16:
+        return False
+    if not re.search(r"[A-Z]", password):
+        return False
+    if not re.search(r"[a-z]", password):
+        return False
+    if not re.search(r"\d", password):  # At least one digit
+        return False
+    if not re.search(r"[^\w\s]", password):  # At least one special character (not letter/number/underscore/space)
+        return False
+    return True
+
 
 # Initialize the router and password hashing context
 router = APIRouter()
@@ -39,6 +54,13 @@ async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db
 # if same email re-registered, return output "Email alredy registered"    
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    
+    # Validate password format
+    if not validate_password(user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be 8-16 characters, include upper and lower case letters, at least one number, and one symbol."
+        )
     
     # Hash the password
     hashed_password = hash_password(user_data.password)
