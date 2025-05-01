@@ -23,5 +23,5 @@ async def get_available_methods(
 
     result = await db.execute(query)
     methods = result.scalars().all()
-
+  
     return methods

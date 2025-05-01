@@ -3,11 +3,12 @@
 # Schemas file (to define how data should look when it comes in (from frontend) and goes out (to frontend))
 # this file holding format for farm expect details
 
-from pydantic import BaseModel, EmailStr, condecimal
+from pydantic import BaseModel, condecimal
 from datetime import date, datetime
-from typing import Optional, Annotated
+from typing import Optional, Annotated, List
 from enum import Enum
 from src.models.model import FarmExpectationEnum
+
 
 DecimalPlace2 = Annotated[condecimal(max_digits=10, decimal_places=2), ...]
 
@@ -34,3 +35,7 @@ class FarmExpectOut(FarmExpectCreate):
 
     class Config:
         orm_mode = True
+
+class FarmExpectGroupOut(BaseModel):
+    latest: FarmExpectOut
+    previous: List[FarmExpectOut]

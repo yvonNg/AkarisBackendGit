@@ -8,3 +8,4 @@ sqlalchemy
 asyncpg
 psycopg2
 passlib[bcrypt]
+python-dateutil

@@ -14,8 +14,7 @@ class CreateActivity(BaseModel):
     nfc_code: Optional[str] = None     
     activity_name: str
     other_activity: Optional[str] = None
-    activity_details: Optional[str] = None
-    record_created_by: int            
+    activity_details: Optional[str] = None               
 
 class UpdateActivity(BaseModel):        
     activity_name: Optional[str] = None
@@ -24,7 +23,8 @@ class UpdateActivity(BaseModel):
 
 class OutActivity(CreateActivity):
     activity_id: int
-    crop_id: Optional[int] = None        
+    crop_id: Optional[int] = None  
+    record_created_by: int 
     record_created_date: datetime
     record_updated_date: Optional[datetime] = None
     record_is_active: bool

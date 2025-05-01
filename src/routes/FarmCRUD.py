@@ -110,30 +110,38 @@ async def update_farm(
 
 # DELETE (soft delete)
 @router.delete("/delete/{farm_id}")
-async def soft_delete_farm(farm_id: int, db: AsyncSession = Depends(get_db),
-                           current_user: User = Depends(get_current_user)):
-    result = await db.execute(select(model.Farm).where(model.Farm.farm_id == farm_id))
+async def soft_delete_farm(
+    farm_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(model.Farm).where(model.Farm.farm_id == farm_id)
+    )
     farm_obj = result.scalar_one_or_none()
     if not farm_obj:
         raise HTTPException(status_code=404, detail="Farm not found")
 
-    #Check Ownership
     if farm_obj.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="Unauthorized to delete this farm")
 
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     farm_obj.farm_is_active = False
     farm_obj.farm_status = FarmStatusEnum.terminated
-    farm_obj.record_updated_date = datetime.now(timezone.utc).replace(tzinfo=None)
+    farm_obj.record_updated_date = now
 
-    farm_expectation = await db.execute(select(model.FarmExpect).where(model.FarmExpect.farm_id == farm_id))
-    farm_expect = farm_expectation.scalar_one_or_none()
-    if farm_expect:
-        farm_expect.record_status = FarmExpectationEnum.deleted
-        farm_expect.record_updated_date = farm_obj.record_updated_date
-        await db.commit()
-        await db.refresh(farm_expect)
+    result_expect = await db.execute(
+        select(model.FarmExpect).where(model.FarmExpect.farm_id == farm_id)
+    )
+    farm_expect_list = result_expect.scalars().all()
+
+    for expect in farm_expect_list:
+        expect.record_status = FarmExpectationEnum.deleted
+        expect.record_updated_date = now
 
     await db.commit()
-    await db.refresh(farm_obj)
 
-    return {"message": f"Farm {farm_id} marked as terminated, and farm expectation status set to inactive."}
+    return {
+        "message": f"Farm {farm_id} marked as terminated, and related expectations marked as deleted."
+    }
+

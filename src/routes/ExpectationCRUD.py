@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 from datetime import datetime, timezone
 from src.models import model
 from src.schemas import farmExpectation
+from typing import List
 from src.database import get_db
 from src.dependencies import get_current_user
 
@@ -54,35 +55,76 @@ async def create_farm_expect(
 
     return new_farm_expect
 
-# READ (get single farm expectation)
-@router.get("/{farm_expect_id}", response_model=farmExpectation.FarmExpectOut)
-async def get_farm_expect(
-    farm_expect_id: int,
+# READ (get latest active farm expectation by farm_id)
+@router.get("/{farm_id}", response_model=farmExpectation.FarmExpectOut)
+async def get_latest_farm_expect(
+    farm_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: model.User = Depends(get_current_user)
 ):
-    result = await db.execute(
-        select(model.FarmExpect).where(model.FarmExpect.farm_expect_id == farm_expect_id)
-    )
-    farm_expect = result.scalar_one_or_none()
-    if not farm_expect:
-        raise HTTPException(status_code=404, detail="Farm Expectation not found")
-
-    # Ownership check via related farm
+    # Check if user owns the farm
     farm_result = await db.execute(
         select(model.Farm).where(
-            model.Farm.farm_id == farm_expect.farm_id,
+            model.Farm.farm_id == farm_id,
             model.Farm.user_id == current_user.user_id
         )
     )
     farm = farm_result.scalar_one_or_none()
     if not farm:
-        raise HTTPException(status_code=403, detail="Not authorized to view this farm expectation")
+        raise HTTPException(status_code=403, detail="Not authorized to view this farm")
+
+    # Get the latest active farm expectation
+    result = await db.execute(
+        select(model.FarmExpect)
+        .where(
+            model.FarmExpect.farm_id == farm_id,
+            model.FarmExpect.record_status == 'active'
+        )
+        .order_by(model.FarmExpect.record_created_date.desc())
+        .limit(1)
+    )
+    farm_expect = result.scalar_one_or_none()
+    if not farm_expect:
+        raise HTTPException(status_code=404, detail="No active farm expectation found for this farm")
 
     return farm_expect
 
+# Get aAll Expectation in DECS
+@router.get("/{farm_id}/expectations", response_model=List[farmExpectation.FarmExpectOut])
+async def get_farm_expectations(
+    farm_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: model.User = Depends(get_current_user)
+):
+    # Check if user owns the farm
+    farm_result = await db.execute(
+        select(model.Farm).where(
+            model.Farm.farm_id == farm_id,
+            model.Farm.user_id == current_user.user_id
+        )
+    )
+    farm = farm_result.scalar_one_or_none()
+    if not farm:
+        raise HTTPException(status_code=403, detail="Not authorized to view this farm")
+
+    # Get all active expectations sorted from newest to oldest
+    result = await db.execute(
+        select(model.FarmExpect)
+        .where(
+            model.FarmExpect.farm_id == farm_id,
+            model.FarmExpect.record_status == 'active'
+        )
+        .order_by(model.FarmExpect.record_created_date.desc())
+    )
+    expectations = result.scalars().all()
+
+    if not expectations:
+        raise HTTPException(status_code=404, detail="No active farm expectations found")
+
+    return expectations
+
 # DELETE (soft delete) farm expectation
-@router.delete("/delete-expect/{farm_expect_id}")
+@router.delete("/delete/{farm_expect_id}")
 async def soft_delete_farm_expect(
     farm_expect_id: int,
     db: AsyncSession = Depends(get_db),

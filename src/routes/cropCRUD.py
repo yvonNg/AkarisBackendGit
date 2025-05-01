@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
 from datetime import datetime, timezone
-
+from dateutil.relativedelta import relativedelta
 from src.models.model import CropDtl, CropStatusEnum, Farm, User, PlantMethod, MethodStatusEnum
 from src.schemas import cropDtl
 from src.database import get_db
@@ -32,7 +32,7 @@ async def verify_farm_ownership(crop: CropDtl, current_user: User, db: AsyncSess
     if farm is None:
         raise HTTPException(status_code=403, detail="You are not authorized to access this crop.")
 
-# CREATE new crop
+# CREATE new Crop
 @router.post("/new", response_model=cropDtl.CropOut)
 async def create_crop(
     crop: cropDtl.CreateCrop,
@@ -44,11 +44,20 @@ async def create_crop(
     if existing_crop.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="NFC code already exists, cannot create duplicate crop.")
 
-    # 2. Check if farm_id belongs to current_user
-    query = select(Farm).where(Farm.farm_id == crop.farm_id, Farm.user_id == current_user.user_id)
-    result = await db.execute(query)
+    # 2. Look up farm_id from farm_abbrev and ensure ownership
+    result = await db.execute(
+        select(Farm).where(
+        Farm.farm_abbrev == crop.farm_abbrev,
+        Farm.user_id == current_user.user_id,
+        Farm.farm_is_active == True  # Optional: skip inactive farms
+        )
+    )
     farm = result.scalar_one_or_none()
     if farm is None:
+        raise HTTPException(status_code=404, detail="Farm not found or not authorized.")
+
+    # Check if the farm belongs to the current user
+    if farm.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="You are not authorized to create crop in this farm.")
 
     # 3. Handle other_method (if provided)
@@ -66,16 +75,25 @@ async def create_crop(
 
         method_id_to_use = new_method.plant_method_id
 
-    # 4. Now create new crop with correct method_id
+    # 4. Calculate crop age based on plantation_date and record_created_date
+    if crop.plantation_date:
+        plantation_date = crop.plantation_date
+        record_created_date = datetime.utcnow().now()  # Or use the actual record creation date if available
+
+        # Calculate the difference between plantation_date and the current date (or record creation date)
+        delta = relativedelta(record_created_date, plantation_date)
+        crop_yrs = round(delta.years + delta.months / 12, 2)
+
+    # 5. Create new crop with the correct farm_id and method_id
     new_crop = CropDtl(
-        farm_id=crop.farm_id,
+        farm_id=farm.farm_id,  # Use the farm_id from the lookup
         nfc_code=crop.nfc_code,
         farm_abbrev=crop.farm_abbrev,
         crop_type=crop.crop_type,
         crop_subtype=crop.crop_subtype,
         plantation_date=crop.plantation_date,
         method_id=method_id_to_use,
-        crop_yrs=crop.crop_yrs,
+        crop_yrs=crop_yrs,  # Use the calculated crop years
         last_harvest_date=crop.last_harvest_date,
         crop_status=CropStatusEnum.active,
         crop_is_active=True
@@ -88,7 +106,7 @@ async def create_crop(
     return new_crop
 
 # READ crop by NFC code
-@router.get("/get-by-nfc/{nfc_code}", response_model=cropDtl.CropOut)
+@router.get("/get/{nfc_code}", response_model=cropDtl.CropOut)
 async def get_crop(
     nfc_code: str,
     db: AsyncSession = Depends(get_db),
@@ -102,15 +120,48 @@ async def get_crop(
 @router.put("/update-by-nfc/{nfc_code}", response_model=cropDtl.CropOut)
 async def update_crop(
     nfc_code: str,
-    crop_update: cropDtl.UpdateCrop,
+    crop_update: cropDtl.UpdateCropM,  # Use model that includes `other_method`
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     crop = await get_crop_by_nfc_code(nfc_code, db)
     await verify_farm_ownership(crop, current_user, db)
 
-    for key, value in crop_update.model_dump(exclude_unset=True).items():
+    updates = crop_update.model_dump(exclude_unset=True)
+
+    # Handle other_method first (create new method)
+    if "other_method" in updates and updates["other_method"]:
+        new_method = PlantMethod(
+            method=updates["other_method"],
+            other_method=updates["other_method"],
+            record_created_by=current_user.user_id,
+            record_status=MethodStatusEnum.active
+        )
+        db.add(new_method)
+        await db.flush()  # Get new method ID
+        updates["method_id"] = new_method.plant_method_id
+
+    # Method authorization (skip admin methods)
+    if "method_id" in updates:
+        method_id = updates["method_id"]
+        result = await db.execute(
+            select(PlantMethod).where(PlantMethod.plant_method_id == method_id)
+        )
+        method = result.scalar_one_or_none()
+        if not method:
+            raise HTTPException(status_code=404, detail="Method not found.")
+        if method.record_created_by is not None and method.record_created_by != current_user.user_id:
+            raise HTTPException(status_code=403, detail="You are not authorized to use this method.")
+
+    # Apply updates
+    for key, value in updates.items():
         setattr(crop, key, value)
+
+    # Recalculate crop_yrs if plantation_date was updated
+    if "plantation_date" in updates:
+        today = datetime.now().date()
+        delta = relativedelta(today, crop.plantation_date)
+        crop.crop_yrs = round(delta.years + delta.months / 12, 2)
 
     crop.crop_modified_date = datetime.now(timezone.utc).replace(tzinfo=None)
 

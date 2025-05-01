@@ -141,7 +141,7 @@ class CropDtl(Base):
     crop_subtype = Column(String(50), nullable=True)
     plantation_date = Column(Date, nullable=False)
     method_id = Column(Integer, ForeignKey("plant_method.plant_method_id"), nullable = False, index=True)
-    crop_yrs = Column(Integer, nullable=False)
+    crop_yrs = Column(Numeric(10,2), nullable=False)
     crop_stage = Column(SqlEnum(CropGrowingStageEnum))
     last_harvest_date = Column(DateTime)
     record_created_date = Column(DateTime, default=func.now(), nullable=False)
