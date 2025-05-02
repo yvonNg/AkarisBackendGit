@@ -20,7 +20,7 @@ class CropBase(BaseModel):
     crop_subtype: str
     plantation_date: date
     method_id: int
-    last_harvest_date: Optional[datetime] = None
+    last_harvest_date: Optional[date] = None
 
 # For Create API (only input fields)
 class CreateCrop(CropBase):
@@ -30,7 +30,7 @@ class CreateCrop(CropBase):
 class UpdateCrop(BaseModel):
     method_id: Optional[int] = None
     crop_subtype: Optional[str] = None
-    last_harvest_date: Optional[datetime] = None
+    last_harvest_date: Optional[date] = None
     plantation_date: Optional[date] = None
 
 class UpdateCropM(UpdateCrop):
@@ -39,6 +39,7 @@ class UpdateCropM(UpdateCrop):
 # For Output (response model, includes extra fields from database)
 class CropOut(CropBase):
     crop_id: int
+    farm_id: int
     crop_yrs: DecimalPlace2
     crop_stage: Optional[CropGrowingStageEnum] = None
     record_created_date: datetime

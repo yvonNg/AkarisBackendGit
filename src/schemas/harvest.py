@@ -14,6 +14,7 @@ dp4 = Annotated[condecimal(max_digits=10, decimal_places=4), ...]
 #---------Harvest Schemas-----------
 
 class CreateHarvest(BaseModel):
+    #farm_id: int
     nfc_code: str
     quantity: dp4
     harvest_unit: HarvestUnitEnum
@@ -34,6 +35,7 @@ class UpdateHarvest(BaseModel):
 class OutHarvest(CreateHarvest):
     harvest_id: int
     crop_id: int
+    farm_id: int
     record_status: RecordStatusEnum
     record_created_date: datetime
     record_updated_date: Optional[datetime] = None

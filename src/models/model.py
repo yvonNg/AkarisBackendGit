@@ -84,6 +84,7 @@ class Farm(Base):
     cropDtl2farm = relationship("CropDtl", back_populates="farm2cropDtl")
     ActivityInFarm = relationship("CropActivity", back_populates="farmActivity")
     expensesInFarm = relationship("Expense", back_populates="farm2expenses")
+    harvestFarm = relationship("Harvest", back_populates="farm2harvest")
     #payload2farm = relationship("Payload", back_populates="farm2payload")
 
     # for easier logging
@@ -143,7 +144,7 @@ class CropDtl(Base):
     method_id = Column(Integer, ForeignKey("plant_method.plant_method_id"), nullable = False, index=True)
     crop_yrs = Column(Numeric(10,2), nullable=False)
     crop_stage = Column(SqlEnum(CropGrowingStageEnum))
-    last_harvest_date = Column(DateTime)
+    last_harvest_date = Column(Date)
     record_created_date = Column(DateTime, default=func.now(), nullable=False)
     crop_modified_date = Column(DateTime)
     crop_status = Column(SqlEnum(CropStatusEnum), default=CropStatusEnum.active)
@@ -294,6 +295,7 @@ class Harvest(Base):
 
     harvest_id = Column(Integer, primary_key=True, index=True)
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False, index=True)
+    farm_id = Column(Integer, ForeignKey("farms.farm_id"), nullable=False, index=True)
     nfc_code = Column(String(30), nullable=False, index=True)
     quantity = Column(Numeric(10, 4), nullable=False)
     harvest_unit = Column(SqlEnum(HarvestUnitEnum), nullable=False)
@@ -307,6 +309,7 @@ class Harvest(Base):
 
     # Relationship
     cropDtl2harvest = relationship("CropDtl", back_populates="harvests")
+    farm2harvest = relationship("Farm", back_populates="harvestFarm")
 
     def __repr__(self):
         return f"<Harvest(id={self.harvest_id}, crop_id={self.crop_id}, quantity={self.quantity})>"

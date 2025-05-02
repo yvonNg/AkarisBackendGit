@@ -1,7 +1,6 @@
 # Author: Ng Yee Von
 # Created date: 25/04/2025
 # Schemas file (to define how data should look when it comes in (from frontend) and goes out (to frontend))
-# this file holding format for expenses
 
 from pydantic import BaseModel, condecimal
 from datetime import datetime, date
@@ -26,7 +25,6 @@ class UpdateExpenses(BaseModel):
     amount: Optional[dp4] = None
     transaction_date: Optional[date] = None
 
-#get farm_id by relation in crop_id
 class OutExpenses(CreateExpenses):
     expenses_id: int
     record_status: RecordStatusEnum
